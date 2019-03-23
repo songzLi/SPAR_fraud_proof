@@ -51,10 +51,12 @@ class Coded_merkle_tree:
     	pdata = pad(data)
     	symbols = [pdata[i: i + SYMBOL_SIZE] for i in range(0, len(pdata), SYMBOL_SIZE)]
     	coded_symbols = LDPC_encoding(symbols,rate)
+        # Construct a coded merkle tree with level layers, the first layer is the original data block encoded by LDPC code
     	tree = [coded_symbols]
     	for j in range(0,level-1):
     		symbols = hashAggregate(tree[j])
     		tree.append(LDPC_encoding(symbols,rate))
+        # roots are the hashes of the last layer, and we will store roots in the block header    
     	roots = [sha3(x) for x in tree[level-1]]
 
 
