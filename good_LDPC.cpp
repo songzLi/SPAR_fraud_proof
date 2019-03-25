@@ -62,8 +62,8 @@ bool exists_stopping_set(vector<vector<int>>H, int stopping_number){
 	for (int i =0; i<n; i++)
 		a[i] = i;
 	vector<vector<int>> all_choices = all_combinations(a,stopping_number);
-	int num_choices = all_choices.size();
-	for (int ell = 0; ell<num_choices; ell++){
+	long long int num_choices = all_choices.size();
+	for (long long int ell = 0; ell<num_choices; ell++){
 		if (is_stopping_set(H,all_choices[ell]))
 			return true;
 	}
