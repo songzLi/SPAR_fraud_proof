@@ -1,5 +1,6 @@
 import copy
 import rlp
+import numpy as np
 
 try:
     from Crypto.Hash import keccak
@@ -18,7 +19,7 @@ SYMBOL_SIZE = 256
 C = 8
 
 #Coding rate
-rate = 0.5
+rate = 0.25
 
 #number of symbols reduces by reduce_factor each layer upward
 reduce_factor = C * rate
@@ -38,18 +39,37 @@ def pad(data):
     	x *= reduce_factor
     return med + b'\x00' * (x * SYMBOL_SIZE * rate - len(med))
 
+def concatenation(data):
+    concat = data[0]
+    for i in range(1,len(data))
+        concat = concat + data[i]
+    return concat
+
+
 def LDPC_encoding(symbols,rate):
 
 
 def hashAggregate(coded_symbols):
 	hashes = [sha3(x) for x in coded_symbols]
-	symbols = [hashes[i: i + C] for i in range(0, len(hashes), HASH_SIZE)]
+    # N is number of hashes to be aggregated
+    N = len(hashes)
+    # aggregate hashes of systematic symbols 
+    systematic = [concatenation(hashes[i: i + C*rate]) for i in range(0, N*rate, C*rate)]
+    # aggregate hashes of parity symbols 
+    parity = [concatenation(hashes[i: i + C*(1-rate)]) for i in range(N*rate, N, C*(1-rate))]
+
+    assert len(systematic)== len(parity)
+
+    return [systematic[i] + parity[i] for i in range(0, len(systematic))]
 
 
 class Coded_merkle_tree:
     def __init__(self, data, level):
     	pdata = pad(data)
-    	symbols = [pdata[i: i + SYMBOL_SIZE] for i in range(0, len(pdata), SYMBOL_SIZE)]
+        #partition the transaction block into symbols of SYMBOL_SIZE bytes
+        #here each symbol is an array of bytes
+    	symbols = [concatenation(pdata[i: i + SYMBOL_SIZE]) for i in range(0, len(pdata), SYMBOL_SIZE)]
+        # Create coded symbols using selected LDPC code
     	coded_symbols = LDPC_encoding(symbols,rate)
         # Construct a coded merkle tree with level layers, the first layer is the original data block encoded by LDPC code
     	tree = [coded_symbols]
