@@ -18,10 +18,10 @@ SYMBOL_SIZE = 256
 # number of hashes to aggregate to form a new symbol
 C = 8
 
-#Coding rate
+# Coding rate
 rate = 0.25
 
-#number of symbols reduces by reduce_factor each layer upward
+# number of symbols reduces by reduce_factor each layer upward
 reduce_factor = C * rate
 
 
@@ -39,18 +39,21 @@ def pad(data):
     	x *= reduce_factor
     return med + b'\x00' * (x * SYMBOL_SIZE * rate - len(med))
 
+
 def concatenation(data):
     concat = data[0]
-    for i in range(1,len(data))
+    for i in range(1, len(data))
         concat = concat + data[i]
     return concat
 
-#partition a byte stream into a list of hashes
+# partition a byte stream into a list of hashes
+
+
 def symbolPartition(data):
-    return [data[i:i+2*HASH_SIZE] for i in range(0, len(data), 2*HASH_SIZE)]
+    return [data[i:i + 2 * HASH_SIZE] for i in range(0, len(data), 2 * HASH_SIZE)]
 
 
-def LDPC_encoding(symbols,rate):
+def LDPC_encoding(symbols, rate):
 
 
 def hashAggregate(coded_symbols):
@@ -77,8 +80,8 @@ def nextIndex(index, K):
 class Coded_merkle_tree:
     def __init__(self, data, headerSize): #headerSize is measured as number of hashes stored in the header for the constructed coded merkle tree
     	pdata = pad(data)
-        #partition the transaction block into symbols of SYMBOL_SIZE bytes
-        #here each symbol is an array of bytes
+        # partition the transaction block into symbols of SYMBOL_SIZE bytes
+        # here each symbol is an array of bytes
     	symbols = [concatenation(pdata[i: i + SYMBOL_SIZE]) for i in range(0, len(pdata), SYMBOL_SIZE)]
         # Create coded symbols using selected LDPC code
     	coded_symbols = LDPC_encoding(symbols,rate)
@@ -108,13 +111,13 @@ class Coded_merkle_tree:
             moving_k = moving_k/reduce_factor
         return merkle_proof
 
-#verify each symbol in the list matches its hash
+# verify each symbol in the list matches its hash
 def verify_proof(index, symbol, K, proof, roots):
     current_index = index
     current_symbol = symbol
     current_k = K
     for s in proof:
-        #recover the hash values from the symbol s
+        # recover the hash values from the symbol s
         h = symbolPartition(s)
         if current_index <= current_k-1: #this symbol is a systematic symbol
             hashIndex = current_index % reduce_factor #find the index of the hash of this systematic symbol 
@@ -127,6 +130,8 @@ def verify_proof(index, symbol, K, proof, roots):
             current_index = nextIndex(current_index, current_k):
             current_symbol = s
             current_k = current_k/reduce_factor
+
+    # final check against the root hashes stored in the header        
     if sha3(current_symbol) == roots[current_index]:
         return True
     else:
