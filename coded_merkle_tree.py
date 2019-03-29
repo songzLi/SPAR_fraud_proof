@@ -78,7 +78,7 @@ def nextIndex(index, K):
 
 
 class Coded_merkle_tree:
-    def __init__(self, data, headerSize): #headerSize is measured as number of hashes stored in the header for the constructed coded merkle tree
+    def __init__(self, data, headerSize, hidePattern): #headerSize is measured as number of hashes stored in the header for the constructed coded merkle tree
     	pdata = pad(data)
         # partition the transaction block into symbols of SYMBOL_SIZE bytes
         # here each symbol is an array of bytes
@@ -96,6 +96,7 @@ class Coded_merkle_tree:
     		self.tree.append(LDPC_encoding(symbols,rate))
         # roots are the hashes of the last layer, and we will store roots in the block header    
     	self.roots = [sha3(x) for x in self.tree[level-1]]
+        self.hide = hidePattern #hidePattern is a binary array indicating the availablity of the coded symbols
 
 
     # Make a Merkle proof for some index
@@ -110,6 +111,18 @@ class Coded_merkle_tree:
             merkle_proof.append(self.tree[i+1][moving_index])
             moving_k = moving_k/reduce_factor
         return merkle_proof
+
+    # Return the requested symbols together with their merkle proofs
+    def sampling(self, S): # S is the list of indices required by the light client
+        symbols = list()
+        for i in S:
+            if self.hide[i] == 0: # requested symbol was not hided
+                symbols.append((self.tree[0][i], self.proof(i)))
+            else:
+                print('Requested symbol with index {} is not available.'.format(i))
+                return []
+        return symbols
+
 
 # verify each symbol in the list matches its hash
 def verify_proof(index, symbol, K, proof, roots):
