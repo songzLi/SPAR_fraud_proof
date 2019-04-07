@@ -22,7 +22,7 @@ SYMBOL_SIZE = 256
 C = 8
 
 # Coding rate
-rate = 1
+rate = 0.25
 
 # number of symbols reduces by reduce_factor each layer upward
 reduce_factor = C * rate
@@ -36,13 +36,14 @@ reduce_factor = C * rate
 #     return higher_power_of_2
 
 def pad(data):
-    med = rlp.encode(data)
-    print(med)
-    print(len(med))
+    #med = rlp.encode(data) #using rlp encoding from Ethereum
+    med = data
+    #print(med)
+    #print(len(med))
     x = 1
     while x * SYMBOL_SIZE * rate < len(med):
         x *= reduce_factor
-    return med + b'\x00' * (x * SYMBOL_SIZE * rate - len(med))
+    return med + b'\x00' * (int(x * SYMBOL_SIZE * rate) - len(med))
 
 
 def concatenation(data):
@@ -52,27 +53,40 @@ def concatenation(data):
     return concat
 
 # partition a byte stream into a list of hashes
+
+
 def symbolPartition(data):
     return [data[i:i + 2 * HASH_SIZE] for i in range(0, len(data), 2 * HASH_SIZE)]
 
 
 def LDPC_encoding(symbols, rate):
-    return symbols
+    coded_symbols = symbols 
+    for i in range(int((1/rate-1)*len(symbols))):
+        coded_symbols.append(b'\x00' * SYMBOL_SIZE)
+    return coded_symbols
 
 
 def hashAggregate(coded_symbols):
-    #print(coded_symbols)
     hashes = [sha3(x) for x in coded_symbols]
+    #print(hashes)
+    #print(len(hashes[0]))
     # N is number of hashes to be aggregated
     N = len(hashes)
     # aggregate hashes of systematic symbols
-    systematic = [concatenation(hashes[i: i + C * rate])
-                  for i in range(0, N * rate, C * rate)]
+    systematic = [concatenation(hashes[i: i + int(C * rate)])
+                  for i in range(0, int(N * rate), int(C * rate))]
     # aggregate hashes of parity symbols
-    parity = [concatenation(hashes[i: i + C * (1 - rate)])
-              for i in range(N * rate, N, C * (1 - rate))]
+    parity = [concatenation(hashes[i: i + int(C * (1 - rate))])
+              for i in range(int(N * rate), N, int(C * (1 - rate)))]
 
     assert len(systematic) == len(parity)
+
+    # print(systematic)
+    # print(len(systematic))
+    # print(parity)
+    # print(len(parity))
+
+    # print([systematic[i] + parity[i] for i in range(0, len(systematic))])
 
     return [systematic[i] + parity[i] for i in range(0, len(systematic))]
 
@@ -84,20 +98,20 @@ def nextIndex(index, K):
         newIndex = (index - K) // (C - reduce_factor)
     return newIndex
 
-
 class coded_merkle_tree:
 
-    # headerSize is measured as number of hashes stored in the header for the
-    # constructed coded merkle tree
+# headerSize is measured as number of hashes stored in the header for the
+# constructed coded merkle tree
     def __init__(self, data, headerSize):
         pdata = pad(data)
-        print(len(pdata))        
+        #print(len(pdata))
 
         # partition the transaction block into symbols of SYMBOL_SIZE bytes
         # here each symbol is an array of bytes
-        symbols = [concatenation(pdata[i: i + SYMBOL_SIZE])
+        symbols = [pdata[i: i + SYMBOL_SIZE]
                    for i in range(0, len(pdata), SYMBOL_SIZE)]
-        print(symbols)  
+        #print(symbols)
+        #print(len(symbols))
 
         # Create coded symbols using selected LDPC code
         coded_symbols = LDPC_encoding(symbols, rate)
@@ -106,6 +120,7 @@ class coded_merkle_tree:
         # compute number of levels in the coded merkle tree given intended
         # header size
         level = np.log(self.N / headerSize) // np.log(reduce_factor) + 1
+        # print(level)
         # Construct a coded merkle tree with level layers, the first layer is
         # the original data block encoded by LDPC code
         self.tree = [coded_symbols]
@@ -177,14 +192,22 @@ def verify_proof(index, symbol, K, proof, roots):
 
 
 # test
-#lettersAndDigits = string.ascii_letters + string.digits
-#data = ''.join(random.choice(lettersAndDigits) for i in range(10**4)).encode()
-data = b'xafx58x4e'
-#type(data)
-print(data)
-print(len(data))
-header_size = reduce_factor  # header contains reduce_factor hashes
+lettersAndDigits = string.ascii_letters + string.digits
+data = ''.join(random.choice(lettersAndDigits) for i in range(10**4)).encode()
+#print(data)
+#print(len(data))
+#print(data[0])
+#data[0:256]
+header_size = 8  # header contains reduce_factor hashes
 codedMerkleTree = coded_merkle_tree(data, header_size)
+assert len(codedMerkleTree.roots) == header_size
 block_length = codedMerkleTree.N
 hide = [0 for i in range(block_length)]
 codedMerkleTree.hide_symbols(hide)
+
+
+
+
+
+
+
