@@ -136,21 +136,21 @@ class coded_merkle_tree:
         # symbols
         self.hide = hidePattern
 
-    # Make a Merkle proof for some index
+    # Return a Merkle proof for some symbol index at some level of the coded merkle tree
     # A proof for a particular symbol is a list of symbols in the upper levels
-    def proof(self, index):
-        assert 0 <= index < self.N
+    def proof(self, lvl, index):
+        assert 0 <= index < len(self.tree[lvl])
         merkle_proof = list()
         moving_index = index  # index of a symbol in the proof list for its level
-        moving_k = self.N * rate  # number of systematic symbols in a level
-        for i in range(len(self.tree) - 1):
-            moving_index = nextIndex(moving_index, moving_k)
+        moving_k = int(len(self.tree[lvl]) * rate) # number of systematic symbols in a level
+        for i in range(lvl,len(self.tree) - 1):
+            moving_index = int(nextIndex(moving_index, moving_k))
             merkle_proof.append(self.tree[i + 1][moving_index])
-            moving_k = moving_k / reduce_factor
+            moving_k = moving_k // reduce_factor
         return merkle_proof
 
     # Return the requested symbols together with their merkle proofs
-    def sampling(self, S):  # S is the list of indices required by the light client
+    def sampling(self, lvl, S):  # S is the list of indices required by the light client at level lvl
         symbols = list()
         for i in S:
             if self.hide[i] == 0:  # requested symbol was not hided
@@ -191,19 +191,31 @@ def verify_proof(index, symbol, K, proof, roots):
         return False
 
 
-# test
+# test merkle tree construction
 lettersAndDigits = string.ascii_letters + string.digits
 data = ''.join(random.choice(lettersAndDigits) for i in range(10**4)).encode()
 #print(data)
 #print(len(data))
 #print(data[0])
 #data[0:256]
-header_size = 8  # header contains reduce_factor hashes
+header_size = 8  # header contains 8 hashes
 codedMerkleTree = coded_merkle_tree(data, header_size)
 assert len(codedMerkleTree.roots) == header_size
 block_length = codedMerkleTree.N
+
+for j in length(codedMerkleTree.tree)
 hide = [0 for i in range(block_length)]
 codedMerkleTree.hide_symbols(hide)
+
+#test merkle proof generated at certain level for a symbol index
+print(len(codedMerkleTree.tree))
+print(codedMerkleTree.proof(0, 10))
+assert len(codedMerkleTree.tree)-1 - 0 == len(codedMerkleTree.proof(0, 10)) 
+print(codedMerkleTree.proof(3, 4))
+assert len(codedMerkleTree.tree)-1 - 3 == len(codedMerkleTree.proof(3, 4)) 
+
+
+
 
 
 
