@@ -4,6 +4,7 @@ import numpy as np
 import random
 import os
 import string
+import copy
 
 try:
     from Crypto.Hash import keccak
@@ -56,7 +57,7 @@ def concatenation(data):
 
 
 def symbolPartition(data):
-    return [data[i:i + 2 * HASH_SIZE] for i in range(0, len(data), 2 * HASH_SIZE)]
+    return [data[i:i + HASH_SIZE] for i in range(0, len(data), HASH_SIZE)]
 
 
 def LDPC_encoding(symbols, rate):
@@ -96,7 +97,7 @@ def nextIndex(index, K):
         newIndex = index // reduce_factor
     else:  # this symbol is a parity symbol
         newIndex = (index - K) // (C - reduce_factor)
-    return newIndex
+    return int(newIndex)
 
 class coded_merkle_tree:
 
@@ -153,41 +154,47 @@ class coded_merkle_tree:
     def sampling(self, lvl, S):  # S is the list of indices required by the light client at level lvl
         symbols = list()
         for i in S:
-            if self.hide[i] == 0:  # requested symbol was not hided
-                symbols.append((self.tree[0][i], self.proof(i)))
+            if self.hide[lvl][i] == 0:  # requested symbol was not hided
+                symbols.append((self.tree[lvl][i], self.proof(lvl,i)))
             else:
-                print('Requested symbol with index {} is not available.'.format(i))
+                print('Requested symbol at level {} with index {} is not available.'.format(lvl,i))
                 return []
         return symbols
 
 
 # verify each symbol in the list matches its hash
-def verify_proof(index, symbol, K, proof, roots):
+def verify_proof(lvl, index, symbol, proof, K, roots):
     current_index = index
     current_symbol = symbol
-    current_k = K
+    current_lvl = lvl
+    current_k = K//(reduce_factor**lvl)
     for s in proof:
         # recover the hash values from the symbol s
         h = symbolPartition(s)
         if current_index <= current_k - 1:  # this symbol is a systematic symbol
             # find the index of the hash of this systematic symbol
-            hashIndex = current_index % reduce_factor
+            hashIndex = int(current_index % reduce_factor)
         else:  # this symbol is a parity symbol
             # find the index of the hash of this parity symbol
-            hashIndex = (current_index - current_k) % (C -
-                                                       reduce_factor) + reduce_factor
+            hashIndex = int((current_index - current_k) % (C -
+                                                       reduce_factor) + reduce_factor)
 
         if sha3(current_symbol) != h[hashIndex]:  # hash check
+            #print(sha3(current_symbol))
+            #print(h[hashIndex])
+            print('Failed at level {} with symbol index {}.'.format(current_lvl,current_index))
             return False
         else:
             current_index = nextIndex(current_index, current_k)
             current_symbol = s
-            current_k = current_k / reduce_factor
+            current_k = int(current_k // reduce_factor)
+            current_lvl = current_lvl + 1
 
     # final check against the root hashes stored in the header
     if sha3(current_symbol) == roots[current_index]:
         return True
     else:
+        #print('I have reach the last level.')
         return False
 
 
@@ -202,17 +209,37 @@ header_size = 8  # header contains 8 hashes
 codedMerkleTree = coded_merkle_tree(data, header_size)
 assert len(codedMerkleTree.roots) == header_size
 block_length = codedMerkleTree.N
+K = int(block_length*rate)
+print('The constructed coded merkle tree has {} levels.'.format(len(codedMerkleTree.tree)))
+#print(codedMerkleTree.tree[0][1])
 
-for j in length(codedMerkleTree.tree)
-hide = [0 for i in range(block_length)]
-codedMerkleTree.hide_symbols(hide)
 
 #test merkle proof generated at certain level for a symbol index
-print(len(codedMerkleTree.tree))
-print(codedMerkleTree.proof(0, 10))
-assert len(codedMerkleTree.tree)-1 - 0 == len(codedMerkleTree.proof(0, 10)) 
-print(codedMerkleTree.proof(3, 4))
-assert len(codedMerkleTree.tree)-1 - 3 == len(codedMerkleTree.proof(3, 4)) 
+proof = codedMerkleTree.proof(3, 4)
+print(proof)
+assert len(codedMerkleTree.tree)-1 - 3 == len(proof) 
+
+#test symbol sampling function
+levels = len(codedMerkleTree.tree)
+hide = list()
+for i in range(levels):
+    hide.append([0 for x in range(len(codedMerkleTree.tree[i]))])
+#print(hide)
+codedMerkleTree.hide_symbols(hide)
+#print(codedMerkleTree.tree[0][1])
+print(codedMerkleTree.sampling(0, [9, 10]))
+hide[0][1] = 1
+print(codedMerkleTree.sampling(0, [1]))
+
+#test proof verification at honest full node
+symbol = codedMerkleTree.tree[3][4]
+roots = codedMerkleTree.roots
+print(verify_proof(3, 4, symbol, proof, K, roots))
+
+symbol = codedMerkleTree.tree[0][15]
+proof = codedMerkleTree.proof(0, 15)
+roots = codedMerkleTree.roots
+print(verify_proof(0, 15, symbol, proof, K, roots))
 
 
 
