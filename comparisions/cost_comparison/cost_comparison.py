@@ -5,6 +5,7 @@ MB = KB ** 2
 
 
 def cost(block_size, data_symbol_size, batch_factor, hash_size, code_rate,
+         spar_header_size,
          stopping_ratio_2drs, stopping_ratio_spar_strong,
          stopping_ratio_spar_weak, target_prob, parity_size):
         # general parameters
@@ -22,8 +23,10 @@ def cost(block_size, data_symbol_size, batch_factor, hash_size, code_rate,
 
         # SPAR specific parameters
         C = batch_factor
+        rf = C * R  # laye reduction factor
         # B_hash = hash_size * Cx
-        num_layers_spar = int(np.ceil(np.log2(N) / np.log2(C * R)))
+        num_layers_spar = int(np.ceil(np.log2(N / spar_header_size) /
+                                      np.log2(rf)))
         merkel_proof_size_spar = hash_size * (C - 1) * num_layers_spar
 
         # 2D-RS costs
@@ -35,7 +38,8 @@ def cost(block_size, data_symbol_size, batch_factor, hash_size, code_rate,
             int(np.ceil(np.sqrt(K))) * (B_data + merkel_proof_size_2drs)
 
         # SPAR costs
-        header_spar = hash_size
+        header_spar = hash_size * spar_header_size
+        print('header spar:', hash_size, spar_header_size, header_spar)
         num_samples_spar_strong = num_samples(target_prob,
                                               stopping_ratio_spar_strong, N)
         sampling_bytes_spar_strong = \
@@ -49,7 +53,9 @@ def cost(block_size, data_symbol_size, batch_factor, hash_size, code_rate,
                                      merkel_proof_size_spar * (2 - R))
         incorrect_coding_proof_size_spar = \
             parity_size * (B_data + merkel_proof_size_spar)
-
+        print('block size:', int(block_size / MB), 'k:', K)
+        print('2DRS:', int(sampling_bytes_2drs / KB))
+        print('SPAR:', int(sampling_bytes_spar_strong / KB))
         return [header_2drs, sampling_bytes_2drs,
                 incorrect_coding_proof_size_2drs,
                 header_spar, sampling_bytes_spar_strong,
@@ -58,7 +64,8 @@ def cost(block_size, data_symbol_size, batch_factor, hash_size, code_rate,
 
 
 def block_size_vs_cost(block_size_range, data_symbol_size_range,
-                       batch_factor, hash_size, code_rate, stopping_ratio_2drs,
+                       batch_factor, hash_size, code_rate,
+                       spar_header_size, stopping_ratio_2drs,
                        stopping_ratio_spar_strong, stopping_ratio_spar_weak,
                        target_prob, parity_size):
     keywords = ['header_2drs', 'sampling_bytes_2drs',
@@ -72,6 +79,7 @@ def block_size_vs_cost(block_size_range, data_symbol_size_range,
 
     for b, d in zip(block_size_range, data_symbol_size_range):
         costs = cost(b, d, batch_factor, hash_size, code_rate,
+                     spar_header_size,
                      stopping_ratio_2drs, stopping_ratio_spar_strong,
                      stopping_ratio_spar_weak, target_prob,
                      parity_size)
@@ -314,12 +322,14 @@ def num_samples(target_prob, stopping_ratio, N):
         N -= 1
 
 
-block_size_range = 2 ** np.array([20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30])
-data_symbol_size = 256
+# block_size_range = 2 ** np.array([20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30])
+block_size_range = 2 ** np.array([20, 22, 24, 26])
+data_symbol_size = 1024
 data_symbol_size_range = [data_symbol_size] * len(block_size_range)
 batch_factor = 8
 hash_size = 32
 code_rate = 0.25
+spar_header_size = 1
 stopping_ratio_2drs = 0.25
 stopping_ratio_spar_strong = 0.124
 stopping_ratio_spar_weak = 0.47
@@ -328,21 +338,22 @@ parity_size = 8
 
 
 block_size_vs_cost(block_size_range, data_symbol_size_range, batch_factor,
-                   hash_size, code_rate, stopping_ratio_2drs,
+                   hash_size, code_rate,
+                   spar_header_size, stopping_ratio_2drs,
                    stopping_ratio_spar_strong, stopping_ratio_spar_weak,
                    target_prob, parity_size)
 
 
-def dss_adaptive(block_size, code_rate, default_dss=256, N_thres=65536):
-    N = (block_size / default_dss) / code_rate
-    if N <= N_thres:
-        return default_dss
-    return int(block_size / code_rate / N_thres)
+# def dss_adaptive(block_size, code_rate, default_dss=256, N_thres=65536):
+#     N = (block_size / default_dss) / code_rate
+#     if N <= N_thres:
+#         return default_dss
+#     return int(block_size / code_rate / N_thres)
 
 
-data_symbol_size_range = [dss_adaptive(b, code_rate, data_symbol_size)
-                          for b in block_size_range]
-block_size_vs_cost_cross(block_size_range, data_symbol_size_range,
-                         batch_factor,
-                         hash_size, code_rate, stopping_ratio_2drs,
-                         stopping_ratio_spar, target_prob, parity_size)
+# data_symbol_size_range = [dss_adaptive(b, code_rate, data_symbol_size)
+#                           for b in block_size_range]
+# block_size_vs_cost_cross(block_size_range, data_symbol_size_range,
+#                          batch_factor,
+#                          hash_size, code_rate, stopping_ratio_2drs,
+#                          stopping_ratio_spar, target_prob, parity_size)
