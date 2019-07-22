@@ -67,10 +67,11 @@ def matrix_to_list(H_encode, H_decode):
     # symbols_parity: sp[i] lists the parities symbol-i involves.
     # It also stores parity_symbols as a txt file.
     p, n = np.shape(H_encode)
+    p_extended, _ = np.shape(H_decode)
     k = n - p
     parity_symbols = []
     symbol_parities = []
-    for row in range(p):
+    for row in range(p_extended):
         parity_symbols.append(list(np.nonzero(H_decode[row])[0]))
     for col in range(n):
         symbol_parities.append(list(np.nonzero(H_decode[:, col])[0]))
@@ -81,7 +82,7 @@ def matrix_to_list(H_encode, H_decode):
         pickle.dump(result, handle)
     print('saved', 'symbols_and_parities_k=' + str(k) + '.pickle')
 
-    f = open('k=' + str(k) + '_decode.txt', 'w')
+    f = open("k=" + str(k) + "_decode.txt", "w")
     for symbols in parity_symbols:
         for s in symbols:
             if not s == symbols[-1]:  # add space if it is not the last entry
@@ -92,12 +93,12 @@ def matrix_to_list(H_encode, H_decode):
         if not symbols == parity_symbols[-1]:
             f.write('\n')
     f.close()
-    print('saved', 'k=' + str(k) + '_encode.txt')
+    print("saved", "k=" + str(k) + "_decode.txt")
 
-    f = open('k=' + str(k) + '_encode.txt', 'w')
+    f = open("k=" + str(k) + "_encode.txt", "w")
     for r in range(p):
         row = H_encode[r]
-        symbols = list(np.nonzero(row > 1)[0])
+        symbols = list(np.nonzero(row > 0)[0])
         for s in symbols:
             if not s == symbols[-1]:  # add space if it is not the last entry
                 f.write(str(s) + ' ')
@@ -122,7 +123,7 @@ def txt_to_matrix(file_name):
     for row in range(p):
         idx_list = parties_lines[row].split()
         for idx in idx_list:
-            H_origin[row, idx] = np.bool(1)
+            H_origin[row, np.int(idx)] = np.bool(1)
     return H_origin
 
 
