@@ -49,21 +49,17 @@ def GE(H_origin, d=8, check=True):
             if (not row == pivot) and H[row][pivot] == 1:
                 H[row] = np.bitwise_xor(H[row], H[pivot])
 
-    # Step-3: swap the left p columns to the right,
+    # Step-3: roll the left p columns to the right,
     # so that the right is full rank, which will adimit a systematic code.
-    H_encode = np.zeros(np.shape(H))
-    H_decode = np.zeros(np.shape(H_origin))
-    for col in range(n):
-        H_encode[:, col] = H[:, (col + p) % n]
-        H_decode[:, col] = H_origin[:, (col + p) % n]
-
+    H = np.roll(H, k, axis=1)
+    H_origin = np.roll(H_origin, k, axis=1)
     # Step-4: optional, double-check that we are correct
     if check:
         for pivot in range(p):
-            assert np.sum(H_encode[pivot, (k + pivot): n]) == 1
-            assert H_encode[pivot, k + pivot] == 1
+            assert np.sum(H[pivot, (k + pivot): n]) == 1
+            assert H[pivot, k + pivot] == 1
 
-    return H_encode, H_decode
+    return H, H_origin
 
 
 def matrix_to_list(H_encode, H_decode):
