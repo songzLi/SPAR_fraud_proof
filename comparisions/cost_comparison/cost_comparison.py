@@ -212,29 +212,30 @@ def myPlot(x_vectors, y_vectors, colors, data_labels, xlabel, ylabel, title,
 
 
 def block_size_vs_cost_cross(block_size_range, data_symbol_size_range,
-                             batch_factor, hash_size, code_rate,
-                             stopping_ratio_2drs, stopping_ratio_spar,
+                             batch_factor, hash_size, code_rate, spar_header_size,
+                             stopping_ratio_2drs, stopping_ratio_spar_strong, stopping_ratio_spar_weak,
                              target_prob, parity_size):
     # 2D-RS always use F_256.
     keywords = ['header_2drs', 'sampling_bytes_2drs',
-                'incorrect_coding_proof_2drs', 'total_cost_2drs',
-                'header_spar', 'sampling_bytes_spar',
-                'incorrect_coding_proof_spar', 'total_cost_spar']
+                'incorrect_coding_proof_2drs',
+                'header_spar', 'sampling_bytes_spar_strong',
+                'sampling_bytes_spar_weak',
+                'incorrect_coding_proof_spar']
 
     results = {}
     for k in keywords:
         results[k] = []
 
     for b, d in zip(block_size_range, data_symbol_size_range):
-        costs = cost(b, d, batch_factor, hash_size, code_rate,
-                     stopping_ratio_2drs, stopping_ratio_spar,
+        costs = cost(b, d, batch_factor, hash_size, code_rate, spar_header_size,
+                     stopping_ratio_2drs, stopping_ratio_spar_strong, stopping_ratio_spar_weak,
                      target_prob, parity_size)
         for k, c in zip(keywords[:4], costs[:4]):
             results[k].append(c)
         # recompute for SPAR, as SPAR doesn't have to increase data symbol size
         costs = cost(b, data_symbol_size_range[0],
-                     batch_factor, hash_size, code_rate,
-                     stopping_ratio_2drs, stopping_ratio_spar,
+                     batch_factor, hash_size, code_rate, spar_header_size,
+                     stopping_ratio_2drs, stopping_ratio_spar_strong, stopping_ratio_spar_weak,
                      target_prob, parity_size)
         for k, c in zip(keywords[4:], costs[4:]):
             results[k].append(c)
@@ -270,14 +271,27 @@ def block_size_vs_cost_cross(block_size_range, data_symbol_size_range,
     # plot header + sampling cost
     x_vector = block_size_range
     y_vector_2drs = results['header_2drs'] + results['sampling_bytes_2drs']
-    y_vector_spar = results['header_spar'] + results['sampling_bytes_spar']
+    y_vector_spar = results['header_spar'] + results['sampling_bytes_spar_strong']
     plt.semilogy(x_vector, y_vector_2drs / KB, label='2D-RS', marker='o')
     plt.semilogy(x_vector, y_vector_spar / KB, label='SPAR', marker='s')
     plt.xlabel('block size (MB)')
     plt.ylabel('header + sampling (KB)')
     plt.grid()
     plt.legend(loc='best')
-    plt.title('header + sampling cost comparison')
+    plt.title('header + sampling cost comparison (strong adv.)')
+    plt.show()
+
+    # plot header + sampling cost
+    x_vector = block_size_range
+    y_vector_2drs = results['header_2drs'] + results['sampling_bytes_2drs']
+    y_vector_spar = results['header_spar'] + results['sampling_bytes_spar_weak']
+    plt.semilogy(x_vector, y_vector_2drs / KB, label='2D-RS', marker='o')
+    plt.semilogy(x_vector, y_vector_spar / KB, label='SPAR', marker='s')
+    plt.xlabel('block size (MB)')
+    plt.ylabel('header + sampling (KB)')
+    plt.grid()
+    plt.legend(loc='best')
+    plt.title('header + sampling cost comparison (weak adv.)')
     plt.show()
 
     # plot incorrect coding cost
@@ -337,11 +351,11 @@ target_prob = 0.01
 parity_size = 8
 
 
-block_size_vs_cost(block_size_range, data_symbol_size_range, batch_factor,
-                   hash_size, code_rate,
-                   spar_header_size, stopping_ratio_2drs,
-                   stopping_ratio_spar_strong, stopping_ratio_spar_weak,
-                   target_prob, parity_size)
+#block_size_vs_cost(block_size_range, data_symbol_size_range, batch_factor,
+#                   hash_size, code_rate,
+#                   spar_header_size, stopping_ratio_2drs,
+#                   stopping_ratio_spar_strong, stopping_ratio_spar_weak,
+#                   target_prob, parity_size)
 
 
 # def dss_adaptive(block_size, code_rate, default_dss=256, N_thres=65536):
@@ -353,7 +367,7 @@ block_size_vs_cost(block_size_range, data_symbol_size_range, batch_factor,
 
 # data_symbol_size_range = [dss_adaptive(b, code_rate, data_symbol_size)
 #                           for b in block_size_range]
-# block_size_vs_cost_cross(block_size_range, data_symbol_size_range,
-#                          batch_factor,
-#                          hash_size, code_rate, stopping_ratio_2drs,
-#                          stopping_ratio_spar, target_prob, parity_size)
+block_size_vs_cost_cross(block_size_range, data_symbol_size_range,
+                         batch_factor,
+                         hash_size, code_rate, spar_header_size, stopping_ratio_2drs,
+                         stopping_ratio_spar_strong, stopping_ratio_spar_weak, target_prob, parity_size)
